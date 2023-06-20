@@ -1,0 +1,31 @@
+{
+  "characterInfo": {
+    "type": "Builder",
+    "gender": "male",
+    "skinColor": "#F2EFEE",
+    "hair": 1,
+    "outfit": 1,
+    "userSkills": {
+      "hardSkill": 4,
+      "softSkill": 2,
+      "discipline": 1
+    },
+    "playerSkills": {
+      "experience": "Under 1 Year",
+      "coffee": "18",
+      "shower": "1 Time a week",
+      "blockchains": "60"
+    },
+    "playerGoals": {
+      "wantToWin": true,
+      "idea": true,
+      "team": true,
+      "amountOfDeveloped": "60"
+    },
+    "name": "test",
+    "email": "test@mail.com",
+    "twitter": {},
+    "discord": {},
+    "telegram": {}
+  }
+}
