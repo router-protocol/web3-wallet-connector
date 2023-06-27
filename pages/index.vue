@@ -1,6 +1,6 @@
 <template>
   <div>
-    <button @click="connectWalletRouterWC">Connect</button>
+    <button @click="connectWalletRouter">Connect</button>
     <button @click="mint">Mint</button>
     <button @click="getNftDataRouter">GetNftDataRouter</button>
     <button @click="getNftDataEVM">GetNftDataEVM</button>
