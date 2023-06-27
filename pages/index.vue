@@ -1,6 +1,6 @@
 <template>
   <div>
-    <button @click="connectWalletRouter">Connect</button>
+    <button @click="connectWalletRouterWC">Connect</button>
     <button @click="mint">Mint</button>
     <button @click="getNftDataRouter">GetNftDataRouter</button>
     <button @click="getNftDataEVM">GetNftDataEVM</button>
@@ -12,6 +12,7 @@
 <script>
 import axios from "axios";
 import Web3 from "web3";
+import WalletConnectProvider from "@walletconnect/web3-provider";
 import {
   getEndpointsForNetwork,
   Network,
@@ -29,8 +30,8 @@ export default {
   data() {
     return {
       routerContractAddress:
-        "router100vfjy5k58qd7wdxhcytl8fgrrjqemjufe64zk0yxzfyk4yr25nsumtpyw",
-      mumbaiContractAddress: "0xb7bd43dbafcd8953a3677ddbed379bd740b83c3f",
+        "router10lges24q56ssqv2zmz9ayelz8anrpkywfmpjtutpjd58853knanswxfxe9",
+      mumbaiContractAddress: "0xe403Dd7245f3Cb1E48235e00f224a0D18601F57B",
       routerChainId: "0x2581",
       web3: null,
       characterInfo: characterData.characterInfo,
@@ -38,10 +39,61 @@ export default {
       contractABI: abi,
     };
   },
-  created() {
-    
-  },
+  created() {},
   methods: {
+    async connectWalletRouterWC() {
+      let provider;
+
+      if (window.ethereum) {
+        provider = window.ethereum;
+        try {
+          // Request account access
+          const accounts = await provider.request({
+            method: "eth_requestAccounts",
+          });
+          // ... rest of your code
+        } catch (error) {
+          // User denied account access...
+          console.error("User denied account access");
+        }
+      }
+      // Legacy dapp browsers...
+      else if (window.web3) {
+        provider = window.web3.currentProvider;
+        // Acccounts always exposed
+        console.log(
+          `Connected with the account: ${window.web3.currentProvider.selectedAddress}`
+        );
+      }
+      // If no injected provider is detected, fall back to WalletConnect
+      else {
+        provider = new WalletConnectProvider({
+          infuraId: "", // Required
+          // bridge: "https://bridge.walletconnect.org", // Optional. If not set, it defaults to the value above
+          // qrcodeModalOptions: {
+          //   mobileLinks: [
+          //     "rainbow",
+          //     "metamask",
+          //     // Add more wallet links
+          //   ],
+          // },
+        });
+
+        try {
+          // Enable session (triggers QR Code modal)
+          await provider.enable();
+        } catch (e) {
+          console.error("Could not get a wallet connection", e);
+          return;
+        }
+
+        console.log(`Connected with the account: ${provider.selectedAddress}`);
+      }
+
+      // We don't know window.web3 version, so we use our own instance of Web3
+      // with the injected provider given by MetaMask or WalletConnect
+      this.web3 = new Web3(provider);
+    },
     // connect wallet to router function
     async connectWalletRouter() {
       if (window.ethereum) {
@@ -230,7 +282,7 @@ export default {
               mint_token: {
                 token_uri: tokenUri,
                 signature: signature,
-                owner: getRouterSignerAddress(window.ethereum.selectedAddress),
+                // owner: getRouterSignerAddress(window.ethereum.selectedAddress),
               },
             },
           },
@@ -369,7 +421,9 @@ export default {
                           symbol: "MATIC", // 2-6 characters long
                           decimals: 18,
                         },
-                        rpcUrls: ["https://polygon-mumbai.gateway.tenderly.co"], // RPC URL for Mumbai testnet
+                        rpcUrls: [
+                          "https://endpoints.omniatech.io/v1/matic/mumbai/public",
+                        ], // RPC URL for Mumbai testnet
                         blockExplorerUrls: ["https://mumbai.polygonscan.com"], // Block explorer URL for Mumbai testnet
                       },
                     ],
@@ -508,6 +562,7 @@ export default {
           },
         },
       };
+      console.log("jsonMSG: ", jsonMsg);
 
       try {
         const tx = await executeQueryInjected({
@@ -537,20 +592,18 @@ export default {
         await this.connectWalletMumbai();
         await this.connectContract();
         // defining the parameters for transferCrossChain function
-        let chainName = "routerTest"; // replace with your chain name
+        let chainName = "RouterTestnet"; // replace with your chain name
         let tokenId = await this.getTokenIdEVM();
-        let uri = await this.getTokenUriEVM(tokenId);
-        let transferTemp = { nftId: parseInt(tokenId), uri: uri }; // replace with your TransferTemp struct parameters
         // invoking the transferCrossChain function
         await this.contract.methods
-          .transferCrossChain(chainName, transferTemp)
+          .transferCrossChain(chainName, parseInt(tokenId))
           .send({
             from: window.ethereum.selectedAddress,
             value: this.web3.utils.toWei("0", "ether"),
           })
           .on("transactionHash", function (hash) {
             console.log("transactionHash", hash);
-            alert('transaction sent! hash:' + hash)
+            alert("transaction sent! hash:" + hash);
           });
       } catch (err) {
         console.log(err);
