@@ -1,6 +1,7 @@
 <template>
   <div>
     <button @click="connectWalletRouter">Connect</button>
+    <button @click="connectWalletRouterWC2">Wallet Connect</button>
     <button @click="mint">Mint</button>
     <button @click="getNftDataRouter">GetNftDataRouter</button>
     <button @click="getNftDataEVM">GetNftDataEVM</button>
@@ -12,7 +13,7 @@
 <script>
 import axios from "axios";
 import Web3 from "web3";
-import WalletConnectProvider from "@walletconnect/web3-provider";
+
 import {
   getEndpointsForNetwork,
   Network,
@@ -24,6 +25,17 @@ import {
 } from "@routerprotocol/router-chain-sdk-ts";
 import characterData from "../pages/data.json";
 const abi = require("./abi.json");
+
+
+import { EthereumClient, w3mConnectors, w3mProvider } from '@web3modal/ethereum'
+import { Web3Modal } from '@web3modal/html'
+import { configureChains, createConfig } from '@wagmi/core'
+import { arbitrum, mainnet, polygon } from '@wagmi/core/chains'
+import { getAccount } from '@wagmi/core'
+
+const chains = [arbitrum, mainnet, polygon]
+const projectId = 'f703313a025761fe01e215b2e35f8294'
+
 
 export default {
   name: "IndexPage",
@@ -41,10 +53,28 @@ export default {
   },
   created() {},
   methods: {
+    async connectWalletRouterWC2() {
+      try {
+        const { publicClient } = configureChains(chains, [w3mProvider({ projectId })])
+        const wagmiConfig = createConfig({
+          autoConnect: true,
+          connectors: w3mConnectors({ projectId, chains }),
+          publicClient
+        })
+        const ethereumClient = new EthereumClient(wagmiConfig, chains)
+        const web3modal = new Web3Modal({ projectId }, ethereumClient)
+        await web3modal.openModal()
+        // const account = getAccount()
+        // console.log(account)
+      } catch(err) {
+        console.log(err)
+      }
+    },
     async connectWalletRouterWC() {
       let provider;
 
       if (window.ethereum) {
+        console.log('desktop')
         provider = window.ethereum;
         try {
           // Request account access
@@ -67,8 +97,9 @@ export default {
       }
       // If no injected provider is detected, fall back to WalletConnect
       else {
+        console.log('mobile')
         provider = new WalletConnectProvider({
-          infuraId: "", // Required
+          infuraId: "ba540ca359744e14a31171bc87df6ea4", // Required
           // bridge: "https://bridge.walletconnect.org", // Optional. If not set, it defaults to the value above
           // qrcodeModalOptions: {
           //   mobileLinks: [
@@ -556,7 +587,7 @@ export default {
                 relayer_fee: "10000000000",
                 ack_type: "NoAck",
                 is_read_call: false,
-                asm_address: "0x",
+                asm_address: "",
               },
             },
           },
