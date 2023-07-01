@@ -1,9 +1,7 @@
 <template>
   <div>
     <button @click="connectWalletWagmi">ConnectWagmi</button>
-    <button @click="switchNetworkInMetamask">switch</button>
-    <button @click="connectWalletRouter">Connect</button>
-    <button @click="connectWalletRouterWC2">Wallet Connect</button>
+    <button @click="switchToRouterWagmi">SwitchWagmi</button>
     <button @click="mint">Mint</button>
     <button @click="getNftDataRouter">GetNftDataRouter</button>
     <button @click="getNftDataEVM">GetNftDataEVM</button>
@@ -24,93 +22,63 @@ import {
   ChainGrpcWasmApi,
   executeQueryInjected,
   getRouterSignerAddress,
-  getEthereumChainIdForNetwork,
-  getNetworkType,
 } from "@routerprotocol/router-chain-sdk-ts";
 
 import characterData from "../pages/data.json";
 const abi = require("./abi.json");
 
-import { createConfig, configureChains, mainnet } from "@wagmi/core";
-import { publicProvider } from "@wagmi/core/providers/public";
+import {
+  EthereumClient,
+  w3mConnectors,
+  w3mProvider,
+} from "@web3modal/ethereum";
+import { Web3Modal } from "@web3modal/html";
+import { configureChains, createConfig, watchAccount } from "@wagmi/core";
+import { arbitrum, mainnet, polygon } from "@wagmi/core/chains";
+const projectId = "be1c34299e26b37abbc852b6ed59e3a2";
+import { getWalletClient } from "@wagmi/core";
 
-import { connect, fetchEnsName } from "@wagmi/core";
-import { InjectedConnector } from "@wagmi/core/connectors/injected";
-import { WalletConnectConnector } from "wagmi/connectors/walletConnect";
-
-const configRouter = {
-  chainId:
-    "0x" + getEthereumChainIdForNetwork(getNetworkType("testnet")).toString(16),
-  chainName: `Router Testnet`,
+export const router = {
+  id: 9601,
+  name: "Router Testnet",
+  network: "router",
   nativeCurrency: {
-    name: "Route",
-    symbol: "ROUTE",
     decimals: 18,
+    name: "Router",
+    symbol: "Route",
   },
-  rpcUrls: [getEndpointsForNetwork(getNetworkType("testnet")).rpcEndpoint],
-  blockExplorerUrls: ["https://explorer.testnet.routerchain.dev"],
+  rpcUrls: {
+    public: { http: ["https://evm.rpc.testnet-eu.routerchain.dev/"] },
+    default: { http: ["https://evm.rpc.testnet-eu.routerchain.dev/"] },
+  },
+  blockExplorers: {
+    etherscan: {
+      name: "scan",
+      url: "https://alpha-explorer-ui.routerprotocol.com",
+    },
+    default: {
+      name: "scan",
+      url: "https://alpha-explorer-ui.routerprotocol.com",
+    },
+  },
 };
 
-const { chains, publicClient, webSocketPublicClient } = configureChains(
-  [mainnet],
-  [publicProvider()]
-);
+const chains = [arbitrum, mainnet, polygon, router];
 
-const config = createConfig({
+const { publicClient } = configureChains(chains, [w3mProvider({ projectId })]);
+const wagmiConfig = createConfig({
   autoConnect: true,
+  connectors: w3mConnectors({ projectId, chains }),
   publicClient,
-  webSocketPublicClient,
 });
+const ethereumClient = new EthereumClient(wagmiConfig, chains);
+const web3modal = new Web3Modal({ projectId }, ethereumClient);
 
-const GetInjectedProviders = () => {
-  if (typeof window !== "undefined") {
-    if (window.ethereum) {
-      return window.ethereum;
-    }
-    if (window.frontier) {
-      return window.frontier.ethereum;
-    }
-    if (window.cosmostation) {
-      return window.cosmostation.ethereum;
-    }
-    return undefined;
-  }
-  return undefined;
-};
-
-const injectedConnector = new InjectedConnector({
-  options: {
-    name: "My Injected Wallet",
-    getProvider: GetInjectedProviders,
-  },
+var accountUser = null;
+const unwatch = watchAccount((account) => {
+  console.log(account);
+  accountUser = account;
 });
-
-const walletConnectConnector = new WalletConnectConnector({
-  options: {
-    projectId: "be1c34299e26b37abbc852b6ed59e3a2",
-    qrModalOptions: {},
-  },
-});
-
-const checkIfRouterChainId = (chainId) => {
-  switch (chainId) {
-    case "9600":
-      return true;
-    case "9601":
-      return true;
-    case "9602":
-      return true;
-    case "9603":
-      return true;
-    case "9604":
-      return true;
-    case "9605":
-      return true;
-    default:
-      return false;
-  }
-};
-
 
 export default {
   name: "IndexPage",
@@ -124,222 +92,41 @@ export default {
       characterInfo: characterData.characterInfo,
       contract: null,
       contractABI: abi,
+      userAddress: "",
+      injectedSigner: "",
     };
   },
   created() {},
   methods: {
-    async switchNetworkInMetamask() {
-      if (window.ethereum) {
-        // Check if the current network is Router Chain
-        const chainId = await window.ethereum.request({
-          method: "eth_chainId",
-        });
-        if (chainId !== this.routerChainId) {
-          try {
-            // Try to switch to Router Chain
-            await window.ethereum.request({
-              method: "wallet_switchEthereumChain",
-              params: [{ chainId: this.routerChainId }],
-            });
-          } catch (switchError) {
-            // This error code indicates that the chain has not been added to MetaMask.
-            
-              try {
-                await window.ethereum.request({
-                  method: "wallet_addEthereumChain",
-                  params: [
-                    {
-                      chainId: this.routerChainId,
-                      chainName: "Router testnet",
-                      nativeCurrency: {
-                        name: "Route",
-                        symbol: "Route", // 2-6 characters long
-                        decimals: 18,
-                      },
-                      rpcUrls: ["https://evm.rpc.testnet.routerchain.dev"],
-                      blockExplorerUrls: [
-                        "https://alpha-explorer-ui.routerprotocol.com",
-                      ],
-                    },
-                  ],
-                });
-              } catch (addError) {
-                console.log("connectWallet() exception: ", addError);
-                alert(
-                  "An error in switching networks, please contact us, details: ",
-                  addError
-                );
-                // handle "add" error
-              }
-           
-          }
-        }
-      } 
-    },
-    async connectWalletWagmi() {
+    async switchToRouterWagmi() {
       try {
-        var _walletClient = null
-        if(window.ethereum) {
-          await injectedConnector.connect();
-          _walletClient = await injectedConnector.getWalletClient();
-        } else {
-          await walletConnectConnector.connect();
-          _walletClient = await walletConnectConnector.getWalletClient();
-        }
-        
-        const _address = (await _walletClient.getAddresses())[0];
-
-        alert(_address)
-        this.switchNetworkInMetamask();
+        await ethereumClient.switchNetwork({ chainId: 9601 });
       } catch (err) {
         console.log(err);
       }
     },
 
-    async connectWalletRouterWC() {
-      let provider;
-
-      if (window.ethereum) {
-        console.log("desktop");
-        provider = window.ethereum;
-        try {
-          // Request account access
-          const accounts = await provider.request({
-            method: "eth_requestAccounts",
-          });
-          // ... rest of your code
-        } catch (error) {
-          // User denied account access...
-          console.error("User denied account access");
-        }
+    async connectWalletWagmi() {
+      try {
+        await web3modal.openModal();
+      } catch (err) {
+        console.log(err);
       }
-      // Legacy dapp browsers...
-      else if (window.web3) {
-        provider = window.web3.currentProvider;
-        // Acccounts always exposed
-        console.log(
-          `Connected with the account: ${window.web3.currentProvider.selectedAddress}`
-        );
-      }
-      // If no injected provider is detected, fall back to WalletConnect
-      else {
-        console.log("mobile");
-        provider = new WalletConnectProvider({
-          infuraId: "ba540ca359744e14a31171bc87df6ea4", // Required
-          // bridge: "https://bridge.walletconnect.org", // Optional. If not set, it defaults to the value above
-          // qrcodeModalOptions: {
-          //   mobileLinks: [
-          //     "rainbow",
-          //     "metamask",
-          //     // Add more wallet links
-          //   ],
-          // },
-        });
-
-        try {
-          // Enable session (triggers QR Code modal)
-          await provider.enable();
-        } catch (e) {
-          console.error("Could not get a wallet connection", e);
-          return;
-        }
-
-        console.log(`Connected with the account: ${provider.selectedAddress}`);
-      }
-
-      // We don't know window.web3 version, so we use our own instance of Web3
-      // with the injected provider given by MetaMask or WalletConnect
-      this.web3 = new Web3(provider);
     },
-    // connect wallet to router function
-    async connectWalletRouter() {
-      if (window.ethereum) {
-        try {
-          // Request account access
-          const accounts = await window.ethereum.request({
-            method: "eth_requestAccounts",
-          });
 
-          // Check if the current network is Router Chain
-          const chainId = await window.ethereum.request({
-            method: "eth_chainId",
-          });
-          if (chainId !== this.routerChainId) {
-            try {
-              // Try to switch to Router Chain
-              await window.ethereum.request({
-                method: "wallet_switchEthereumChain",
-                params: [{ chainId: this.routerChainId }],
-              });
-            } catch (switchError) {
-              // This error code indicates that the chain has not been added to MetaMask.
-              if (switchError.code === 4902) {
-                try {
-                  await window.ethereum.request({
-                    method: "wallet_addEthereumChain",
-                    params: [
-                      {
-                        chainId: this.routerChainId,
-                        chainName: "Router testnet",
-                        nativeCurrency: {
-                          name: "Route",
-                          symbol: "Route", // 2-6 characters long
-                          decimals: 18,
-                        },
-                        rpcUrls: ["https://evm.rpc.testnet.routerchain.dev"],
-                        blockExplorerUrls: [
-                          "https://alpha-explorer-ui.routerprotocol.com",
-                        ],
-                      },
-                    ],
-                  });
-                } catch (addError) {
-                  console.log("connectWallet() exception: ", addError);
-                  alert(
-                    "An error in switching networks, please contact us, details: ",
-                    addError
-                  );
-                  // handle "add" error
-                }
-              } else {
-                console.log(
-                  "connectWallet() switchError exception: ",
-                  switchError
-                );
-                alert(
-                  "An error in switching network, please contact us, details: ",
-                  switchError
-                );
-              }
-              // handle other "switch" errors
-            }
-          }
-
-          // We don't know window.web3 version, so we use our own instance of Web3
-          // with the injected provider given by MetaMask
-          this.web3 = new Web3(window.ethereum);
-
-          console.log(`Connected with the account: ${accounts[0]}`);
-        } catch (error) {
-          // User denied account access...
-          console.error("User denied account access");
-          //alert('Error! You denied account access')
+    async setUserAddressAndClient() {
+      try {
+        console.log(ethereumClient.getNetwork().chain.id)
+        await this.switchToRouterWagmi()
+        this.userAddress = ethereumClient.getAccount().address;
+        const walletClient = await getWalletClient();
+        this.injectedSigner = walletClient;
+        if(ethereumClient.getNetwork().chain.id != 9601) {
+          alert('You have to switch a network in your wallet manually. Go to your wallet and switch to Router network and then try again.')
+          return
         }
-      }
-      // Legacy dapp browsers...
-      else if (window.web3) {
-        this.web3 = new Web3(window.web3.currentProvider);
-        // Acccounts always exposed
-        console.log(
-          `Connected with the account: ${window.web3.currentProvider.selectedAddress}`
-        );
-      }
-      // Non-dapp browsers...
-      else {
-        console.log(
-          "Non-Ethereum browser detected. You should consider trying MetaMask!"
-        );
-        alert("No wallet detected. Please, install MetaMask");
+      } catch (err) {
+        console.log(err);
       }
     },
 
@@ -356,9 +143,7 @@ export default {
               extension: {
                 msg: {
                   is_already_minted: {
-                    owner: getRouterSignerAddress(
-                      window.ethereum.selectedAddress
-                    ),
+                    owner: getRouterSignerAddress(this.userAddress),
                   },
                 },
               },
@@ -385,18 +170,18 @@ export default {
 
     // mint function
     async mint() {
-      try {
-        await this.connectWalletRouter();
-      } catch (err) {
-        console.log("mint() connectWallet() exception: ", err);
-        alert(
-          "An error occured, please contact us; mint() while connectWallet() exception: ",
-          err
-        );
+      if (!accountUser.isConnected) {
+        try {
+          await this.connectWalletWagmi();
+        } catch (err) {
+          console.log(err);
+        }
         return;
       }
 
       try {
+        await this.setUserAddressAndClient();
+
         if (await this.isAlreadyMinted()) {
           alert("You have already minted! You cannot mint more than 1 token.");
           return;
@@ -450,8 +235,8 @@ export default {
           contractAddress: this.routerContractAddress,
           executeMsg: jsonMsg,
           nodeUrl: getEndpointsForNetwork(Network.Testnet).lcdEndpoint,
-          ethereumAddress: window.ethereum.selectedAddress,
-          injectedSigner: window.ethereum,
+          ethereumAddress: this.userAddress,
+          injectedSigner: this.injectedSigner,
         });
 
         const txHash = tx.tx_response.txhash;
@@ -511,6 +296,15 @@ export default {
 
     // func to get nft id on router chain
     async getNftsRouter() {
+      if (!accountUser.isConnected) {
+        try {
+          await this.connectWalletWagmi();
+        } catch (err) {
+          console.log(err);
+        }
+        return;
+      }
+      await this.setUserAddressAndClient();
       try {
         const endpoint = getEndpointsForNetwork(Network.Testnet);
         const wasmClient = new ChainGrpcWasmApi(endpoint.grpcEndpoint);
@@ -520,7 +314,7 @@ export default {
           queryData: toUtf8(
             JSON.stringify({
               tokens: {
-                owner: getRouterSignerAddress(window.ethereum.selectedAddress),
+                owner: getRouterSignerAddress(this.userAddress),
                 start_after: "0",
                 limit: 1,
               },
@@ -631,7 +425,7 @@ export default {
     async getTokenIdEVM() {
       try {
         const tokenId = await this.contract.methods
-          .tokenOfOwnerByIndex(window.ethereum.selectedAddress, 0)
+          .tokenOfOwnerByIndex(this.userAddress, 0)
           .call();
         console.log("getTokenId() on EVM: ", tokenId);
         return tokenId;
@@ -678,16 +472,16 @@ export default {
 
     // crosschain transfer from Router to EVM
     async transferFromRouterToEVM() {
-      try {
-        await this.connectWalletRouter();
-      } catch (err) {
-        console.log("mint() connectWallet() exception: ", err);
-        alert(
-          "An error occured, please contact us; mint() while connectWallet() exception: ",
-          err
-        );
+      if (!accountUser.isConnected) {
+        try {
+          await this.connectWalletWagmi();
+        } catch (err) {
+          console.log(err);
+        }
         return;
       }
+      await this.setUserAddressAndClient();
+
       const tokenId = await this.getNftsRouter();
       if (tokenId == null || tokenId == undefined) {
         alert("you dont have an nft on router");
@@ -704,7 +498,7 @@ export default {
             transfer_cross_chain: {
               dst_chain_id: "80001",
               token_id: parseInt(tokenId),
-              recipient: window.ethereum.selectedAddress,
+              recipient: this.userAddress,
               request_metadata: {
                 dest_gas_limit: 300000,
                 dest_gas_price: 30000000000,
@@ -727,8 +521,8 @@ export default {
           contractAddress: this.routerContractAddress,
           executeMsg: jsonMsg,
           nodeUrl: getEndpointsForNetwork(Network.Testnet).lcdEndpoint,
-          ethereumAddress: window.ethereum.selectedAddress,
-          injectedSigner: window.ethereum,
+          ethereumAddress: this.userAddress,
+          injectedSigner: this.injectedSigner,
         });
 
         const txHash = tx.tx_response.txhash;
@@ -755,7 +549,7 @@ export default {
         await this.contract.methods
           .transferCrossChain(chainName, parseInt(tokenId))
           .send({
-            from: window.ethereum.selectedAddress,
+            from: this.userAddress,
             value: this.web3.utils.toWei("0", "ether"),
           })
           .on("transactionHash", function (hash) {

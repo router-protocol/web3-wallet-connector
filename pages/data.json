@@ -5,27 +5,41 @@
     "skinColor": "#F2EFEE",
     "hair": 1,
     "outfit": 1,
+    "coinAmount": 0,
     "userSkills": {
-      "hardSkill": 4,
-      "softSkill": 2,
-      "discipline": 1
+        "hardSkill": 4,
+        "softSkill": 1,
+        "discipline": 1
     },
     "playerSkills": {
-      "experience": "Under 1 Year",
-      "coffee": "18",
-      "shower": "1 Time a week",
-      "blockchains": "60"
+        "experience": "1",
+        "coffee": "5",
+        "shower": "1",
+        "blockchains": "10",
+        "yoloSliderValue": "50",
+        "nftSliderValue": "50",
+        "memeSliderValue": "0",
+        "companyName": "",
+        "companyMCSliderValue": "1000000",
+        "partnership": "500"
     },
     "playerGoals": {
-      "wantToWin": true,
-      "idea": true,
-      "team": true,
-      "amountOfDeveloped": "60"
+        "wantToWin": true,
+        "idea": true,
+        "team": true,
+        "amountOfDeveloped": "50",
+        "wantToWinDegen": true,
+        "invest": true,
+        "buddies": true,
+        "hoursaweek": "50",
+        "partner": true,
+        "makeMoney": true,
+        "hoursaweekPartner": "50"
     },
-    "name": "test",
-    "email": "test@mail.com",
+    "name": "",
+    "email": "",
     "twitter": {},
     "discord": {},
     "telegram": {}
-  }
+}
 }
